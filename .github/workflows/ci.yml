@@ -2,8 +2,8 @@ name: go-cache
 on:
   push:
 jobs:
-  runs-on: ubuntu-latest
   ci:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
