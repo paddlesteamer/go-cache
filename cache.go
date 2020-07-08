@@ -1122,7 +1122,8 @@ func (c *cache) Flush() map[string]*Item {
 
 type filter func(*Item) bool
 
-// Flush all items from the cache and return them.
+// Flush filterd items from cache and return them.
+// If fn(item) returns true, it is flushed.
 func (c *cache) FlushWithFilter(fn filter) map[string]*Item {
 	c.mu.Lock()
 	defer c.mu.Unlock()
