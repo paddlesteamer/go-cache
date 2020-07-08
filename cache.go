@@ -1120,6 +1120,35 @@ func (c *cache) Flush() map[string]*Item {
 	return m
 }
 
+type filter func(*Item) bool
+
+// Flush all items from the cache and return them.
+func (c *cache) FlushWithFilter(fn filter) map[string]*Item {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	m := map[string]*Item{}
+	for k, v := range c.items {
+		// "Inlining" of Expired
+		if v.Expired() {
+			continue
+		}
+
+		if !fn(v) {
+			continue
+		}
+
+		m[k] = &Item{
+			Object:     v.Object,
+			Expiration: v.Expiration,
+		}
+
+		c.delete(k)
+	}
+
+	return m
+}
+
 type janitor struct {
 	Interval time.Duration
 	stop     chan bool
