@@ -1191,6 +1191,41 @@ func TestFlush(t *testing.T) {
 	}
 }
 
+func TestFlushWithFilter(t *testing.T) {
+	tc := New(DefaultExpiration, 0)
+	tc.Set("foo", "bar", DefaultExpiration)
+	tc.Set("baz", "yes", DefaultExpiration)
+
+	items := tc.FlushWithFilter(func(i *Item) bool {
+		return i.Object.(string) == "bar"
+	})
+
+	x, found := tc.Get("foo")
+	if found {
+		t.Error("foo was found, but it should have been deleted")
+	}
+	if x != nil {
+		t.Error("x is not nil:", x)
+	}
+	x, found = tc.Get("baz")
+	if !found {
+		t.Error("baz was not found, but it shouldn't have been deleted")
+	}
+	if x == nil {
+		t.Error("x is nil:", x)
+	}
+
+	x, found = items["foo"]
+	if !found {
+		t.Error("foo was not found, it should have been returned on flush")
+	}
+
+	x, found = items["baz"]
+	if found {
+		t.Error("baz was found, it shouldn't have been returned on flush")
+	}
+}
+
 func TestIncrementOverflowInt(t *testing.T) {
 	tc := New(DefaultExpiration, 0)
 	tc.Set("int8", int8(127), DefaultExpiration)
