@@ -1019,15 +1019,22 @@ func (c *cache) ItemCount() int {
 
 // Flush all items from the cache and return them.
 func (c *cache) Flush() map[string]*Item {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	evictedItems := []keyAndValue{}
 
-	m := make(map[string]*Item, len(c.items))
+	c.mu.Lock()
+
+	evicted := c.onEvicted != nil
+
+	m := map[string]*Item{}
 	for k, v := range c.items {
-		// "Inlining" of Expired
+		if evicted {
+			evictedItems = append(evictedItems, keyAndValue{k, v.Object})
+		}
+
 		if v.Expired() {
 			continue
 		}
+
 		m[k] = &Item{
 			Object:     v.Object,
 			Expiration: v.Expiration,
@@ -1036,16 +1043,23 @@ func (c *cache) Flush() map[string]*Item {
 
 	c.items = map[string]*Item{}
 
+	c.mu.Unlock()
+
+	for _, v := range evictedItems {
+		c.onEvicted(v.key, v.value)
+	}
+
 	return m
 }
 
-type filter func(*Item) bool
+type filter func(k string, i *Item) bool
 
 // Flush filterd items from cache and return them.
 // If fn(item) returns true, it is flushed.
 func (c *cache) FlushWithFilter(fn filter) map[string]*Item {
+	evictedItems := []keyAndValue{}
+
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	m := map[string]*Item{}
 	for k, v := range c.items {
@@ -1054,7 +1068,7 @@ func (c *cache) FlushWithFilter(fn filter) map[string]*Item {
 			continue
 		}
 
-		if !fn(v) {
+		if !fn(k, v) {
 			continue
 		}
 
@@ -1063,7 +1077,16 @@ func (c *cache) FlushWithFilter(fn filter) map[string]*Item {
 			Expiration: v.Expiration,
 		}
 
-		c.delete(k)
+		ov, evicted := c.delete(k)
+		if evicted {
+			evictedItems = append(evictedItems, keyAndValue{k, ov})
+		}
+	}
+
+	c.mu.Unlock()
+
+	for _, v := range evictedItems {
+		c.onEvicted(v.key, v.value)
 	}
 
 	return m
