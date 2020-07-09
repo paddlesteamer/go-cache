@@ -13,16 +13,24 @@ cache can be saved to and loaded from a file (using `c.Items()` to retrieve the
 items map to serialize, and `NewFrom()` to create a cache from a deserialized
 one) to recover from downtime quickly. (See the docs for `NewFrom()` for caveats.)
 
+### Important Note
+
+This is a forked version of [patrickmn/go-cache](https://github.com/patrickmn/go-cache). The differences between this repo and patrickmn's are:
+- This version has `GetWithExpirationUpdate` method which extends expiration time on `Get`
+- `Flush` returns `map` with all items.
+- Has `FlushWithFilter` method which you can filter flushed items with a function you provide. 
+- `OnEvicted` is called in `Flush` and `FlushWithFilter` for flushed items. 
+
 ### Installation
 
-`go get github.com/patrickmn/go-cache`
+`go get github.com/paddlesteamer/go-cache`
 
 ### Usage
 
 ```go
 import (
 	"fmt"
-	"github.com/patrickmn/go-cache"
+	"github.com/paddlesteamer/go-cache"
 	"time"
 )
 
@@ -69,12 +77,11 @@ func main() {
 	// ...
 	// foo can then be passed around freely as a string
 
-	// Want performance? Store pointers!
-	c.Set("foo", &MyStruct, cache.DefaultExpiration)
-	if x, found := c.Get("foo"); found {
-		foo := x.(*MyStruct)
-			// ...
-	}
+	m := c.FlushWithFilter(func(key string, it *Item) bool {
+		return key == "foo"
+	})
+
+	m["foo"]
 }
 ```
 
