@@ -1194,8 +1194,8 @@ func TestFlushWithFilter(t *testing.T) {
 	tc.Set("foo", "bar", DefaultExpiration)
 	tc.Set("baz", "yes", DefaultExpiration)
 
-	items := tc.FlushWithFilter(func(i *Item) bool {
-		return i.Object.(string) == "bar"
+	items := tc.FlushWithFilter(func(k string, it *Item) bool {
+		return k == "foo" && it.Object.(string) == "bar"
 	})
 
 	x, found := tc.Get("foo")
@@ -1287,6 +1287,45 @@ func TestOnEvicted(t *testing.T) {
 	}
 	if x.(int) != 4 {
 		t.Error("bar was not 4")
+	}
+}
+
+func TestFlushOnEvicted(t *testing.T) {
+	tc := New(DefaultExpiration, 0)
+	tc.Set("foo", 3, DefaultExpiration)
+	if tc.onEvicted != nil {
+		t.Fatal("tc.onEvicted is not nil")
+	}
+	works := false
+	tc.OnEvicted(func(k string, v interface{}) {
+		if k == "foo" && v.(int) == 3 {
+			works = true
+		}
+	})
+	tc.Flush()
+	if !works {
+		t.Error("works bool not true")
+	}
+}
+
+func TestFlushWithFilterOnEvicted(t *testing.T) {
+	tc := New(DefaultExpiration, 0)
+	tc.Set("foo", 3, DefaultExpiration)
+	tc.Set("bar", 4, DefaultExpiration)
+	if tc.onEvicted != nil {
+		t.Fatal("tc.onEvicted is not nil")
+	}
+	works := false
+	tc.OnEvicted(func(k string, v interface{}) {
+		if k == "foo" && v.(int) == 3 {
+			works = true
+		}
+	})
+	tc.FlushWithFilter(func(k string, it *Item) bool {
+		return k == "foo" && it.Object.(int) == 3
+	})
+	if !works {
+		t.Error("works bool not true")
 	}
 }
 
